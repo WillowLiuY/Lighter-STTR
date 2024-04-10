@@ -13,6 +13,11 @@ class MultiheadAttentionRelative(nn.MultiheadAttention):
     """
 
     def __init__(self, embed_dim, num_heads):
+        """
+        :param embed_dim: The dimensionality of the input embeddings.
+        :param num_heads: The number of attention heads.
+        """
+        # dropout = 0.0, bias enabled
         super(MultiheadAttentionRelative, self).__init__(embed_dim, num_heads, dropout=0.0, bias=True,
                                                          add_bias_kv=False, add_zero_attn=False,
                                                          kdim=None, vdim=None)
@@ -21,26 +26,30 @@ class MultiheadAttentionRelative(nn.MultiheadAttention):
         """
         Multihead attention
 
-        :param query: [W,HN,C]
+        :param query: [W,HN,C], where W is the sequence length,
+                      HN is the batch size times the number of heads, 
+                      and C is the embedding dimension.
         :param key: [W,HN,C]
         :param value: [W,HN,C]
-        :param attn_mask: mask to invalidate attention, -inf is used for invalid attention, [W,W]
+        :param attn_mask: optional mask to prevent attention to certain positions,
+                        with shape [W, W]. Positions with -inf are ignored in attention.
         :param pos_enc: [2W-1,C]
         :param pos_indexes: index to select relative encodings, flattened in transformer WW
         :return: output value vector, attention with softmax (for debugging) and raw attention (used for last layer)
         """
 
         w, bsz, embed_dim = query.size()
-        head_dim = embed_dim // self.num_heads
+        head_dim = embed_dim // self.num_heads # dimension per head
         assert head_dim * self.num_heads == embed_dim, "embed_dim must be divisible by num_heads"
 
         # project to get qkv
         if torch.equal(query, key) and torch.equal(key, value):
-            # self-attention
+            # in self-attention, q, k, v are the same
             q, k, v = F.linear(query, self.in_proj_weight, self.in_proj_bias).chunk(3, dim=-1)
 
         elif torch.equal(key, value):
-            # cross-attention
+            # in cross-attention, k and v are the same, but not q.
+            # here, q is transformed separately from k and v.
             _b = self.in_proj_bias
             _start = 0
             _end = embed_dim
@@ -62,9 +71,9 @@ class MultiheadAttentionRelative(nn.MultiheadAttention):
                     _b = _b[_start:]
                 k, v = F.linear(key, _w, _b).chunk(2, dim=-1)
 
-        # project to find q_r, k_r
+        # project to find relative query (q_r) and key (k_r) using positional encodings, if provided.
         if pos_enc is not None:
-            # reshape pos_enc
+            # Positional encodings are selected based on positional indexes and reshaped for compatibility.
             pos_enc = torch.index_select(pos_enc, 0, pos_indexes).view(w, w,
                                                                        -1)  # 2W-1xC -> WW'xC -> WxW'xC
             # compute k_r, q_r
@@ -72,12 +81,13 @@ class MultiheadAttentionRelative(nn.MultiheadAttention):
             _end = 2 * embed_dim
             _w = self.in_proj_weight[_start:_end, :]
             _b = self.in_proj_bias[_start:_end]
+            # Linear transformation is applied to positional encodings to obtain q_r and k_r.
             q_r, k_r = F.linear(pos_enc, _w, _b).chunk(2, dim=-1)  # WxW'xC
         else:
-            q_r = None
-            k_r = None
+            q_r, k_r = None, None
 
-        # scale query
+        # Scaling of query (and relative query, if present).
+        # helps stabilize gradients.
         scaling = float(head_dim) ** -0.5
         q = q * scaling
         if q_r is not None:
@@ -116,7 +126,8 @@ class MultiheadAttentionRelative(nn.MultiheadAttention):
             attn_mask = attn_mask[None, None, ...]
             attn += attn_mask
 
-        # raw attn
+        # Raw attention scores are kept before applying softmax normalization,
+        # which transforms scores into probabilities.
         raw_attn = attn
 
         # softmax
@@ -130,7 +141,7 @@ class MultiheadAttentionRelative(nn.MultiheadAttention):
         v_o = v_o.reshape(bsz, self.num_heads, w, head_dim).permute(2, 0, 1, 3).reshape(w, bsz, embed_dim)
         v_o = F.linear(v_o, self.out_proj.weight, self.out_proj.bias)
 
-        # average attention weights over heads
+        # average attention weights over heads to get a single attention map per batch item.
         attn = attn.sum(dim=1) / self.num_heads
 
         # raw attn
