@@ -11,10 +11,15 @@ from utilities.misc import center_crop
 
 class TransitionUp(nn.Module):
     """
-    Scale the resolution up by transposed convolution
+    Scale the resolution up by transposed convolution in the expanding path
     """
 
     def __init__(self, in_channels: int, out_channels: int, scale: int = 2):
+        """
+        :param in_channels: Number of input channels.
+        :param out_channels: Number of output channels.
+        :param scale: Scaling factor (2 or 4) to increase spatial dimensions.
+        """
         super().__init__()
         if scale == 2:
             self.convTrans = nn.ConvTranspose2d(
@@ -32,6 +37,12 @@ class TransitionUp(nn.Module):
             )
 
     def forward(self, x: Tensor, skip: Tensor):
+        """
+        :param x: Input tensor.
+        :param skip: Skip connection tensor.
+        :return: Upscaled output tensor concatenated with skip connection.
+        """
+        
         out = self.convTrans(x)
         out = center_crop(out, skip.size(2), skip.size(3))
         out = torch.cat([out, skip], 1)
@@ -61,7 +72,13 @@ class DoubleConv(nn.Module):
 
 class Tokenizer(nn.Module):
     """
-    Expanding path of feature descriptor using DenseBlocks
+    Expanding path of feature descriptor using DenseBlocks to progressively increase
+    the spatial resolution of feature maps while adding new feature channels through growth.
+
+    :param block_config: Configuration of dense blocks, specifying the number of layers in each block.
+    :param backbone_feat_channel: Channels in the backbone features, used for skip connections.
+    :param hidden_dim: Dimension of the hidden layer.
+    :param growth_rate: Number of feature maps added by each layer in a dense block.
     """
 
     def __init__(self, block_config: list, backbone_feat_channel: list, hidden_dim: int, growth_rate: int):
@@ -76,14 +93,19 @@ class Tokenizer(nn.Module):
 
         self.bottle_neck = _DenseBlock(block_config[0], backbone_feat_channel[0], 4, drop_rate=0.0,
                                        growth_rate=growth_rate)
-        up = []
-        dense_block = []
-        prev_block_channels = growth_rate * block_config[0]
+        
+        up = [] # List of transition up modules.
+        dense_block = [] # List of subsequent dense blocks.
+        prev_block_channels = growth_rate * block_config[0] # Channels after the initial dense block.
+        
+        # Create transition up and dense blocks for each resolution level.
         for i in range(self.num_resolution):
             if i == self.num_resolution - 1:
+                # For the final layer, upscale to the original resolution and reduce to hidden_dim channels.
                 up.append(TransitionUp(prev_block_channels, hidden_dim, 4))
                 dense_block.append(DoubleConv(hidden_dim + 3, hidden_dim))
             else:
+                # For intermediate layers, transition up and add dense blocks.
                 up.append(TransitionUp(prev_block_channels, prev_block_channels))
                 cur_channels_count = prev_block_channels + backbone_feat_channel[i + 1]
                 dense_block.append(

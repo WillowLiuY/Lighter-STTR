@@ -22,14 +22,18 @@ class Transformer(nn.Module):
     def __init__(self, hidden_dim: int = 128, nhead: int = 8, num_attn_layers: int = 6):
         super().__init__()
 
+        # self-attention
         self_attn_layer = TransformerSelfAttnLayer(hidden_dim, nhead)
         self.self_attn_layers = get_clones(self_attn_layer, num_attn_layers)
 
+        # cross-attention
         cross_attn_layer = TransformerCrossAttnLayer(hidden_dim, nhead)
         self.cross_attn_layers = get_clones(cross_attn_layer, num_attn_layers)
 
+        # layer norm
         self.norm = nn.LayerNorm(hidden_dim)
 
+        # store dimensions and number of heads
         self.hidden_dim = hidden_dim
         self.nhead = nhead
         self.num_attn_layers = num_attn_layers
@@ -94,6 +98,8 @@ class Transformer(nn.Module):
 
         feat_left = feat_left.permute(1, 3, 2, 0).flatten(2).permute(1, 2, 0)  # CxWxHxN -> CxWxHN -> WxHNxC
         feat_right = feat_right.permute(1, 3, 2, 0).flatten(2).permute(1, 2, 0)
+        
+        # prepare positional indexes if positional encoding
         if pos_enc is not None:
             with torch.no_grad():
                 # indexes to shift rel pos encoding
@@ -181,6 +187,8 @@ class TransformerCrossAttnLayer(nn.Module):
             pos_flipped = torch.flip(pos, [0])
         else:
             pos_flipped = pos
+        
+        # cross-attention where right image attends to the left
         feat_right_2 = self.cross_attn(query=feat_right_2, key=feat_left_2, value=feat_left_2, pos_enc=pos_flipped,
                                        pos_indexes=pos_indexes)[0]
 
@@ -194,7 +202,8 @@ class TransformerCrossAttnLayer(nn.Module):
         else:
             attn_mask = None
 
-        # normalize again the updated right features
+        # normalize again the updated right features and apply cross attention in the 
+        # opposite direction
         feat_right_2 = self.norm2(feat_right)
         feat_left_2, attn_weight, raw_attn = self.cross_attn(query=feat_left_2, key=feat_right_2, value=feat_right_2,
                                                              attn_mask=attn_mask, pos_enc=pos,

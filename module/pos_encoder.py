@@ -12,10 +12,17 @@ from utilities.misc import NestedTensor
 
 class PositionEncodingSine1DRelative(nn.Module):
     """
-    relative sine encoding 1D, partially inspired by DETR (https://github.com/facebookresearch/detr)
+    A sine wave-based relative positional encoding 1D, partially inspired by DETR (https://github.com/facebookresearch/detr)
+    It's particularly good when the relative distances between elements matter rather than absolute positions.
     """
 
     def __init__(self, num_pos_feats=64, temperature=10000, normalize=False, scale=None):
+        """
+        :param num_pos_feats: The half number of dimensions of the positional encodings.
+        :param temperature: A scaling factor to adjust the frequency of the sine waves.
+        :param normalize: If True, scales the position by the `scale` parameter.
+        :param scale: A scaling factor used when `normalize` is True. Defaults to 2*pi.
+        """
         super().__init__()
         self.num_pos_feats = num_pos_feats
         self.temperature = temperature
@@ -26,9 +33,11 @@ class PositionEncodingSine1DRelative(nn.Module):
             scale = 2 * math.pi
         self.scale = scale
 
-    @torch.no_grad()
+    @torch.no_grad() # No gradient required
     def forward(self, inputs: NestedTensor):
         """
+        Generates the sine positional encoding for the given input.
+
         :param inputs: NestedTensor
         :return: pos encoding [N,C,H,2W-1]
         """
@@ -52,6 +61,7 @@ class PositionEncodingSine1DRelative(nn.Module):
         if self.normalize:
             x_embed = x_embed * self.scale
 
+        # calculate positional encoding
         dim_t = torch.arange(self.num_pos_feats, dtype=torch.float32, device=x.device)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
