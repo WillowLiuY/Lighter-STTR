@@ -16,9 +16,12 @@ class ContextAdjustmentLayer(nn.Module):
         super().__init__()
         self.num_blocks = num_blocks
 
-        # disp head
+        # disp head to extract basic features from the concatenated disparity and input image, 
+        # which capture both texture and disparity info for further processing
         self.in_conv = nn.Conv2d(4, feature_dim, kernel_size=3, padding=1)
+        # residual blocks to interatively refine
         self.layers = nn.ModuleList([ResBlock(feature_dim, expansion) for _ in range(num_blocks)])
+        # convlution to compute the residual corrections
         self.out_conv = nn.Conv2d(feature_dim, 1, kernel_size=3, padding=1)
 
         # occ head

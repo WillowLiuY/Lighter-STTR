@@ -34,6 +34,7 @@ class SppBackbone(nn.Module):
         self.resblock_1 = self._make_layer(BasicBlock, 64, 3, 2)  # 1/4
         self.resblock_2 = self._make_layer(BasicBlock, 128, 3, 2)  # 1/8
 
+        # SPP branches
         self.branch1 = nn.Sequential(nn.AvgPool2d((16, 16), stride=(16, 16)),
                                      nn.Conv2d(128, 32, kernel_size=1, bias=False),
                                      nn.BatchNorm2d(32),
@@ -69,7 +70,7 @@ class SppBackbone(nn.Module):
 
     def forward(self, x: NestedTensor):
         """
-        :param x: NestedTensor
+        :param x: NestedTensor containing left and right image pair
         :return: list containing feature descriptors at different spatial resolution
                 0: [2N, 3, H, W]
                 1: [2N, C0, H//4, W//4]
@@ -78,6 +79,7 @@ class SppBackbone(nn.Module):
         """
         _, _, h, w = x.left.shape
 
+        # Concatenate left and right images to create a stereo pair input.
         src_stereo = torch.cat([x.left, x.right], dim=0)  # 2NxCxHxW
 
         # in conv
@@ -87,18 +89,28 @@ class SppBackbone(nn.Module):
         output_1 = self.resblock_1(output)  # 1/4
         output_2 = self.resblock_2(output_1)  # 1/8
 
-        # spp
+        # spp on the output of last residual blocks. pooling to different sizes and 
+        # then upsampling back to a common size.
+        
+        # the size to which all SPP outputs will be upsampled.
         h_spp, w_spp = math.ceil(h / 16), math.ceil(w / 16)
         spp_1 = self.branch1(output_2)
         spp_1 = F.interpolate(spp_1, size=(h_spp, w_spp), mode='bilinear', align_corners=False)
+
         spp_2 = self.branch2(output_2)
         spp_2 = F.interpolate(spp_2, size=(h_spp, w_spp), mode='bilinear', align_corners=False)
+
         spp_3 = self.branch3(output_2)
         spp_3 = F.interpolate(spp_3, size=(h_spp, w_spp), mode='bilinear', align_corners=False)
+
         spp_4 = self.branch4(output_2)
         spp_4 = F.interpolate(spp_4, size=(h_spp, w_spp), mode='bilinear', align_corners=False)
+        
+        # Concatenate all SPP outputs along the channel dimension
         output_3 = torch.cat([spp_1, spp_2, spp_3, spp_4], dim=1)  # 1/16
 
+        # returns:
+        # [concatenated stereo images, feature maps at progressively reduced resolutions]
         return [src_stereo, output_1, output_2, output_3]
 
 

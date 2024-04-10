@@ -20,7 +20,7 @@ class TransitionUp(nn.Module):
             self.convTrans = nn.ConvTranspose2d(
                 in_channels=in_channels, out_channels=out_channels,
                 kernel_size=3, stride=2, padding=0, bias=True)
-        elif scale == 4:
+        elif scale == 4: # for a scale of 4, use two sequential transposed convolutions
             self.convTrans = nn.Sequential(
                 nn.ConvTranspose2d(
                     in_channels=in_channels, out_channels=out_channels,
