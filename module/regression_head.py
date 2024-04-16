@@ -38,6 +38,7 @@ class RegressionHead(nn.Module):
 
     def _compute_low_res_disp(self, pos_shift: Tensor, attn_weight: Tensor, occ_mask: Tensor):
         """
+        Provides a disparity map at a lower res by focusing on the most attended areas. 
         Compute low res disparity using the attention weight by finding the most attended pixel and regress within the 3px window
 
         :param pos_shift: relative pos shift (computed from _compute_unscaled_pos_shift), [1,1,W,W]
@@ -49,10 +50,10 @@ class RegressionHead(nn.Module):
         # find high response area
         high_response = torch.argmax(attn_weight, dim=-1)  # NxHxW
 
-        # build 3 px local window
+        # build 3 px local window around the high response
         response_range = torch.stack([high_response - 1, high_response, high_response + 1], dim=-1)  # NxHxWx3
 
-        # attention with re-weighting
+        # attention weights are padded and then re-weighted within the 3px window
         attn_weight_pad = F.pad(attn_weight, [1, 1], value=0.0)  # N x Hx W_left x (W_right+2)
         attn_weight_rw = torch.gather(attn_weight_pad, -1, response_range + 1)  # offset range by 1, N x H x W_left x 3
 
@@ -249,8 +250,7 @@ class RegressionHead(nn.Module):
         # compute relative response (RR) at ground truth location
         if x.disp is not None:
             # find ground truth response (gt_response) and location (target)
-            output['gt_response'], target = self._compute_gt_location(scale, x.sampled_cols, x.sampled_rows,
-                                                                      attn_ot[..., :-1, :-1], x.disp)
+            output['gt_response'], target = self._compute_gt_location(scale, x.sampled_cols, x.sampled_rows, attn_ot[..., :-1, :-1], x.disp)
         else:
             output['gt_response'] = None
 

@@ -22,8 +22,8 @@ class Criterion(nn.Module):
             loss_weight = {}
 
         self.px_threshold = threshold
-        self.validation_max_disp = validation_max_disp
-        self.weights = loss_weight
+        self.validation_max_disp = validation_max_disp # -1 means no limit
+        self.weights = loss_weight # weights for aggregating different losses
 
         self.l1_criterion = nn.SmoothL1Loss()
         self.epe_criterion = nn.L1Loss()
@@ -42,7 +42,7 @@ class Criterion(nn.Module):
         # computing threshold-px error
         loss_dict['error_px'] = torch.sum(
             torch.abs(pred[~invalid_mask] - disp[~invalid_mask]) > self.px_threshold).item()
-        loss_dict['total_px'] = torch.sum(~invalid_mask).item()
+        loss_dict['total_px'] = torch.sum(~invalid_mask).item() # valid pixels
 
         return
 
