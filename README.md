@@ -1,8 +1,8 @@
 # QuadTree-STTR
-Implementation of quadtree attention on stereo transformer (STTR) for sparse attention.
+Rearchitect stereo transformer (STTR) with sparse attention (specifically, QuadTree attention) for acceleration.
 
 Reference:
 
-STTR paper: https://github.com/mli0603/stereo-transformer
+Original STTR architecture: https://github.com/mli0603/stereo-transformer
 
-QuadTree attention paper: https://arxiv.org/abs/2201.02767
+Original QuadTree mechanism: https://arxiv.org/abs/2201.02767
