@@ -1,4 +1,4 @@
-# QuadTree-STTR
+# Lighter-STTR
 Rearchitect stereo transformer (STTR) with sparse attention (specifically, QuadTree attention) for acceleration.
 
 Reference:
