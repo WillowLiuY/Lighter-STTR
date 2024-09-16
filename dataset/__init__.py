@@ -1,5 +1,5 @@
 import torch.utils.data as data
-from dataset.scared import ScaredDataset
+from dataset.Scared import ScaredDataset
 
 def create_data_loader(args):
     '''

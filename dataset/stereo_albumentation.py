@@ -1,7 +1,3 @@
-#  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
-#
-#  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
-
 import random
 
 import albumentations.augmentations.functional as F

@@ -1,13 +1,9 @@
-#  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
-#
-#  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
-
 import numpy as np
 import torch
 from albumentations import Compose
-
 from dataset.stereo_albumentation import Normalize, ToTensor
 
+# use ImageNet stats for normalization
 __imagenet_stats = {'mean': [0.485, 0.456, 0.406],
                     'std': [0.229, 0.224, 0.225]}
 IMG_EXTENSIONS = [
@@ -21,88 +17,83 @@ normalization = Compose([Normalize(always_apply=True),
 
 def denormalize(img):
     """
-    De-normalize a tensor and return img
+    De-normalize a tensor back to original image
 
     :param img: normalized image, [C,H,W]
     :return: original image, [H,W,C]
     """
-
     if isinstance(img, torch.Tensor):
-        img = img.permute(1, 2, 0)  # H,W,C
+        img = img.permute(1, 2, 0)  # Conver to H,W,C
         img *= torch.tensor(__imagenet_stats['std'])
         img += torch.tensor(__imagenet_stats['mean'])
         return img.numpy()
     else:
-        img = img.transpose(1, 2, 0)  # H,W,C
+        img = img.transpose(1, 2, 0)
         img *= np.array(__imagenet_stats['std'])
         img += np.array(__imagenet_stats['mean'])
         return img
 
 
-def compute_left_occ_region(w, disp):
+def get_left_occlusion(w, disp):
     """
     Compute occluded region on the left image border
 
     :param w: image width
-    :param disp: left disparity
-    :return: occ mask
+    :param disp: disparity of right image
+    :return: occlusion mask
     """
+    x_coords = np.arange(0, w)[None, :]  # 1xW
+    shifted_x_coords = x_coords - disp
+    left_occ_mask = shifted_x_coords < 0  # True where occluded
 
-    coord = np.linspace(0, w - 1, w)[None,]  # 1xW
-    shifted_coord = coord - disp
-    occ_mask = shifted_coord < 0  # occlusion mask, 1 indicates occ
-
-    return occ_mask
+    return left_occ_mask
 
 
-def compute_right_occ_region(w, disp):
+def get_right_occlusion(w, disp):
     """
     Compute occluded region on the right image border
-
-    :param w: image width
-    :param disp: right disparity
-    :return: occ mask
     """
-    coord = np.linspace(0, w - 1, w)[None,]  # 1xW
-    shifted_coord = coord + disp
-    occ_mask = shifted_coord > w  # occlusion mask, 1 indicates occ
+    x_coords = np.arange(0, w)[None, :]  # 1xW
+    shifted_x_coords = x_coords + disp
+    right_occ_mask = shifted_x_coords > w 
 
-    return occ_mask
+    return right_occ_mask
 
-
-def augment(input_data, transformation):
+def custom_transform(inputs, transformation):
     """
-    apply augmentation and find occluded pixels
+    apply custom augmentation and handle occlusions.
+
+    :param inputs: Inputs dictionary with images and disparity maps
+    :return: dictionary with transformed images and updated occlusion masks
     """
 
-    if transformation is not None:
-        # perform augmentation first
-        input_data = transformation(**input_data)
+    if transformation:
+        inputs = transformation(**inputs)
 
-    w = input_data['disp'].shape[-1]
-    # set large/small values to be 0
-    input_data['disp'][input_data['disp'] > w] = 0
-    input_data['disp'][input_data['disp'] < 0] = 0
+    w = inputs['disp'].shape[-1]
+    # clamp disparity values to be within [0, width]
+    inputs['disp'] = np.clip(inputs['disp'], 0, w)
 
-    # manually compute occ area (this is necessary after cropping)
-    occ_mask = compute_left_occ_region(w, input_data['disp'])
-    input_data['occ_mask'][occ_mask] = True  # update
-    input_data['occ_mask'] = np.ascontiguousarray(input_data['occ_mask'])
+    # compute occlusion for the left image
+    left_occlusion = get_left_occlusion(w, inputs['disp'])
+    inputs['occ_mask'][left_occlusion] = True  # update
+    inputs['occ_mask'] = np.ascontiguousarray(inputs['occ_mask'])
 
-    # manually compute occ area for right image
+    # compute occlusion for the right image
     try:
-        occ_mask = compute_right_occ_region(w, input_data['disp_right'])
-        input_data['occ_mask_right'][occ_mask] = 1
-        input_data['occ_mask_right'] = np.ascontiguousarray(input_data['occ_mask_right'])
+        right_occlusion = get_right_occlusion(w, inputs['disp_right'])
+        inputs['occ_mask_right'][right_occlusion] = 1
+        inputs['occ_mask_right'] = np.ascontiguousarray(inputs['occ_mask_right'])
     except KeyError:
         # print('No disp mask right, check if dataset is KITTI')
-        input_data['occ_mask_right'] = np.zeros_like(occ_mask).astype(np.bool)
-    input_data.pop('disp_right', None)  # remove disp right after finish
+        inputs['occ_mask_right'] = np.zeros_like(occ_mask, dtype=np.bool_)
 
-    # set occlusion area to 0
-    occ_mask = input_data['occ_mask']
-    input_data['disp'][occ_mask] = 0
-    input_data['disp'] = np.ascontiguousarray(input_data['disp'], dtype=np.float32)
+    # clean up disparity map
+    inputs.pop('disp_right', None)
+
+    # set occluded disparity areas to 0
+    inputs['disp'][inputs['occ_mask']] = 0
+    inputs['disp'] = np.ascontiguousarray(inputs['disp'], dtype=np.float32)
 
     # return normalized image
-    return normalization(**input_data)
+    return normalization(**inputs)
