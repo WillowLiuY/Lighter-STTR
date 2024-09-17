@@ -1,14 +1,10 @@
-#  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
-#
-#  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
-
 from typing import Optional
 
 import torch
 from torch import nn, Tensor
 from torch.utils.checkpoint import checkpoint
 
-from model.MHA import MHA_Relative
+from model.MHA_relative import MultiheadAttention_Relative
 from utilities.misc import get_clones
 
 layer_idx = 0

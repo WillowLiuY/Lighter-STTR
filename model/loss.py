@@ -1,20 +1,10 @@
-#  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
-#
-#  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
-
-from collections import OrderedDict
-
 import torch
 from torch import nn, Tensor
-
+from collections import OrderedDict
 from utilities.misc import batched_index_select, NestedTensor
 
 
 class Criterion(nn.Module):
-    """
-    Compute loss and evaluation metrics
-    """
-
     def __init__(self, threshold: int = 3, validation_max_disp: int = -1, loss_weight: list = None):
         super(Criterion, self).__init__()
 

@@ -1,12 +1,8 @@
-#  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
-#
-#  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
-
 import torch.nn as nn
 
 from model.feat_extractor_backbone import build_backbone
 from model.feat_extractor_tokenizer import build_tokenizer
-from model.pos_encoder import build_position_encoding
+from model.pe_relative import build_position_encoding
 from model.regression_head import build_regression_head
 from model.transformer import build_transformer
 from utilities.misc import batched_index_select, NestedTensor
