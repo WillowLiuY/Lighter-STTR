@@ -5,6 +5,7 @@ from PIL import Image
 from natsort import natsorted
 import numpy as np
 from dataset.preprocess import custom_transform
+from utilities.python_pfm import readPFM
 
 class ScaredDataset(Dataset):
     def __init__(self, data_path, split='train'):
@@ -28,7 +29,7 @@ class ScaredDataset(Dataset):
         return len(self.left_img)
     
     def __getitem__(self, idx):
-        data = {}
+        inputs = {}
         left_img_path = self.left_img[idx]
         data['left'] = np.array(Image.open(left_img_path)).astype(np.uint8)
 
@@ -38,12 +39,12 @@ class ScaredDataset(Dataset):
         # disparity maps
         disp_path = left_img_path.replace('img_left', 'disp_left').replace('.png', 'pfm')
         disparity, _ = readPFM(disp_path)
-        data['disparity'] = disparity
+        data['disp'] = disparity
 
         # occlution masks
         occ_path = left_img_path.replace('img_left', 'occ_left')
         data['occ_mask'] = np.array(Image.open(occ_path)).astype(np.uint8) == 128
-        data['disparity'][data['occ_mask']] == 0.0
+        data['disp'][data['occ_mask']] == 0.0
 
         data = custom_transform(data, self.transform)
         return data

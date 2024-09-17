@@ -122,7 +122,7 @@ class TransformerSelfAttnLayer(nn.Module):
 
     def __init__(self, hidden_dim: int, nhead: int):
         super().__init__()
-        self.self_attn = MHA_Relative(hidden_dim, nhead)
+        self.self_attn = MultiheadAttention_Relative(hidden_dim, nhead)
 
         self.norm1 = nn.LayerNorm(hidden_dim)
 
@@ -156,7 +156,7 @@ class TransformerCrossAttnLayer(nn.Module):
 
     def __init__(self, hidden_dim: int, nhead: int):
         super().__init__()
-        self.cross_attn = MHA_Relative(hidden_dim, nhead)
+        self.cross_attn = MultiheadAttention_Relative(hidden_dim, nhead)
 
         self.norm1 = nn.LayerNorm(hidden_dim)
         self.norm2 = nn.LayerNorm(hidden_dim)
