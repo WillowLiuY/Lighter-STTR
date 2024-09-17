@@ -13,7 +13,7 @@ class MultiheadAttention_Relative(nn.MultiheadAttention):
         :param num_heads: The number of attention heads.
         """
         # dropout = 0.0, bias enabled
-        super MultiheadAttention_Relative, self).__init__(embed_dim, num_heads, dropout=0.0, bias=True, add_bias_kv=False, add_zero_attn=False, kdim=None, vdim=None)
+        super(MultiheadAttention_Relative, self).__init__(embed_dim, num_heads, dropout=0.0, bias=True, add_bias_kv=False, add_zero_attn=False, kdim=None, vdim=None)
 
     def forward(self, query, key, value, attn_mask=None, pos_enc=None, pos_indexes=None):
         """
