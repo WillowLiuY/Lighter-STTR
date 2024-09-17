@@ -8,7 +8,7 @@ import torch
 from torch import nn, Tensor
 from torch.utils.checkpoint import checkpoint
 
-from module.attention import MultiheadAttentionRelative
+from model.MHA import MHA_Relative
 from utilities.misc import get_clones
 
 layer_idx = 0
@@ -126,7 +126,7 @@ class TransformerSelfAttnLayer(nn.Module):
 
     def __init__(self, hidden_dim: int, nhead: int):
         super().__init__()
-        self.self_attn = MultiheadAttentionRelative(hidden_dim, nhead)
+        self.self_attn = MHA_Relative(hidden_dim, nhead)
 
         self.norm1 = nn.LayerNorm(hidden_dim)
 
@@ -160,7 +160,7 @@ class TransformerCrossAttnLayer(nn.Module):
 
     def __init__(self, hidden_dim: int, nhead: int):
         super().__init__()
-        self.cross_attn = MultiheadAttentionRelative(hidden_dim, nhead)
+        self.cross_attn = MHA_Relative(hidden_dim, nhead)
 
         self.norm1 = nn.LayerNorm(hidden_dim)
         self.norm2 = nn.LayerNorm(hidden_dim)

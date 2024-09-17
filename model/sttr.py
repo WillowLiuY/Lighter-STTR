@@ -4,11 +4,11 @@
 
 import torch.nn as nn
 
-from module.feat_extractor_backbone import build_backbone
-from module.feat_extractor_tokenizer import build_tokenizer
-from module.pos_encoder import build_position_encoding
-from module.regression_head import build_regression_head
-from module.transformer import build_transformer
+from model.feat_extractor_backbone import build_backbone
+from model.feat_extractor_tokenizer import build_tokenizer
+from model.pos_encoder import build_position_encoding
+from model.regression_head import build_regression_head
+from model.transformer import build_transformer
 from utilities.misc import batched_index_select, NestedTensor
 
 

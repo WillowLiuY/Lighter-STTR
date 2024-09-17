@@ -1,26 +1,19 @@
-#  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
-#
-#  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+"""
+Multihead attention with relative positional encoding.
+"""
 
-class MultiheadAttentionRelative(nn.MultiheadAttention):
-    """
-    Multihead attention with relative positional encoding
-    """
-
+class MultiheadAttention_Relative(nn.MultiheadAttention):
     def __init__(self, embed_dim, num_heads):
         """
         :param embed_dim: The dimensionality of the input embeddings.
         :param num_heads: The number of attention heads.
         """
         # dropout = 0.0, bias enabled
-        super(MultiheadAttentionRelative, self).__init__(embed_dim, num_heads, dropout=0.0, bias=True,
-                                                         add_bias_kv=False, add_zero_attn=False,
-                                                         kdim=None, vdim=None)
+        super MultiheadAttention_Relative, self).__init__(embed_dim, num_heads, dropout=0.0, bias=True, add_bias_kv=False, add_zero_attn=False, kdim=None, vdim=None)
 
     def forward(self, query, key, value, attn_mask=None, pos_enc=None, pos_indexes=None):
         """
@@ -74,8 +67,7 @@ class MultiheadAttentionRelative(nn.MultiheadAttention):
         # project to find relative query (q_r) and key (k_r) using positional encodings, if provided.
         if pos_enc is not None:
             # Positional encodings are selected based on positional indexes and reshaped for compatibility.
-            pos_enc = torch.index_select(pos_enc, 0, pos_indexes).view(w, w,
-                                                                       -1)  # 2W-1xC -> WW'xC -> WxW'xC
+            pos_enc = torch.index_select(pos_enc, 0, pos_indexes).view(w, w,-1)  # 2W-1xC -> WW'xC -> WxW'xC
             # compute k_r, q_r
             _start = 0
             _end = 2 * embed_dim

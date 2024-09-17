@@ -10,8 +10,7 @@ import torch.nn as nn
 
 
 class NestedTensor(object):
-    def __init__(self, left, right, disp=None, sampled_cols=None, sampled_rows=None, occ_mask=None,
-                 occ_mask_right=None):
+    def __init__(self, left, right, disp=None, sampled_cols=None, sampled_rows=None, occ_mask=None, occ_mask_right=None):
         self.left = left
         self.right = right
         self.disp = disp
